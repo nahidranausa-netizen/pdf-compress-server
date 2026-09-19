@@ -7,7 +7,7 @@ from flask import Flask, request, send_file
 
 app = Flask(__name__)
 
-# র‍্যান্ডম ক্যারেক্টার জেনারেট করার ফাংশন
+# Random character generate korar function
 def generate_random_text(size_in_bytes):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=size_in_bytes))
 
@@ -24,7 +24,7 @@ def compress_pdf():
     file.save(input_path)
     
     try:
-        # ধাপ ১: Ghostscript দিয়ে ইমেজ/পিডিএফ কমপ্রেস করা (এটি সাইজ নিশ্চিতভাবে কমাবে)
+        # Ghostscript diye prothome size komano
         gs_cmd = [
             "gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
             "-dPDFSETTINGS=/screen", "-dNOPAUSE", "-dQUIET", "-dBATCH",
@@ -32,15 +32,16 @@ def compress_pdf():
         ]
         subprocess.run(gs_cmd, check=True)
         
-        # ধাপ ২: PyMuPDF দিয়ে সাইজ চেক করা এবং প্যাডিং করা
         actual_size = os.path.getsize(gs_output_path)
-        target_size = 76 * 1024  # টার্গেট সাইজ ৭৬ কেবি
+        
+        # 🔥 MAGIC LOGIC: 71 KB theke 79 KB er moddhe random target size generate korbe
+        target_size = random.randint(71, 79) * 1024  
         
         if actual_size < target_size:
             doc = fitz.open(gs_output_path)
             padding_needed = target_size - actual_size
             
-            # সেফ মেটাডেটার ভেতরে র‍্যান্ডম ভ্যালু অ্যাড করে সাইজ ৭৫-৮০ কেবি করা
+            # Random size onujayi dummy text add kora
             dummy_text = generate_random_text(padding_needed)
             metadata = doc.metadata
             metadata['keywords'] = dummy_text
@@ -49,14 +50,13 @@ def compress_pdf():
             doc.save(final_output_path, garbage=3, deflate=True)
             doc.close()
         else:
-            # যদি সাইজ আগে থেকেই বড় থাকে, তবে সেটাই ফাইনাল আউটপুট হিসেবে সেভ হবে
             os.rename(gs_output_path, final_output_path)
 
         return send_file(final_output_path, as_attachment=True, download_name="compressed.pdf", mimetype='application/pdf')
     except Exception as e:
         return {"error": str(e)}, 500
     finally:
-        # সার্ভার ক্লিন রাখা
+        # Server clean rakha
         if os.path.exists(input_path): os.remove(input_path)
         if os.path.exists(gs_output_path): os.remove(gs_output_path)
         if os.path.exists(final_output_path): os.remove(final_output_path)
